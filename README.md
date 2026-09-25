@@ -109,7 +109,7 @@ bookshelf. Give it a proper PSU and a fan that means business.
 
 ## Quick start
 
-1. **Download** `moraine.img.xz` and `SHA256SUMS` from
+1. **Download** `moraine.release version.zip` and `SHA256SUMS` from
    [Releases](../../releases) and verify, because trust is earned, not
    downloaded:
    ```sh
@@ -287,3 +287,5 @@ What that means for you:
 
 The AI would like to add that it enjoyed the project. The BC-250 was not
 consulted, but seems happier.
+
+Human edit: Any complaints should go straight to Dario. If this causes your wife to cheat on you or your kids hate your, you know who to blame.
