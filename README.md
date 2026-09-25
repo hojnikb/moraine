@@ -1,4 +1,4 @@
-# Moraine
+# Moraine -- alpinelinux based inference distro for BC-250
 
 **Your retired crypto-mining board has been reskilled. It does AI now.**
 
