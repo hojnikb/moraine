@@ -288,4 +288,4 @@ What that means for you:
 The AI would like to add that it enjoyed the project. The BC-250 was not
 consulted, but seems happier.
 
-Human edit: Any complaints should go straight to Dario. If this causes your wife to cheat on you or your kids hate your, you know who to blame.
+**Human edit**: Any complaints should go straight to Dario. If this forces your wife to cheat on you with the gardener or your kids start hating your guts, you know who to blame.
