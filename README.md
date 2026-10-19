@@ -14,7 +14,7 @@ minimal Linux appliance built on [Alpine Linux](https://alpinelinux.org) with
 exactly one personality trait: **every megabyte the operating system doesn't
 use is a megabyte the model gets.** It will bring this up at parties.
 
-> **Status:** version 0.2, early and experimental. It boots, it loads models, it answers
+> **Status:** version 0.3, early and experimental. It boots, it loads models, it answers
 > questions. Occasionally it answers them *correctly*. Rough edges are
 > included free of charge. Issues and pull requests are very welcome;
 > complaints about the jokes will be read aloud to the board, which has
@@ -34,6 +34,13 @@ use is a megabyte the model gets.** It will bring this up at parties.
   OpenGL, no X11, no Wayland. A headless box that serves tokens has no reason
   to know what a window is, and we intend to keep it that way. `/tmp` lives on
   disk and there is no swap. RAM is for models. RAM has always been for models.
+- **Kernel on a diet too.** About 137 MiB the kernel would normally set
+  aside is handed back: a 64 MiB DMA bounce buffer this board barely uses
+  shrinks to 16 MiB, DRAM-less NVMe drives don't get to borrow 64 MiB of RAM
+  as cache, a memory-debugging sampler is switched off, and file and network
+  hash tables are sized for an appliance instead of a file server. The GTT
+  pool is sized from what's left, so the model gets it all. `MEM_SAVE="no"`
+  in `config.env` brings back the defaults.
 - **GPU memory that sizes itself.** At boot, before the GPU driver has even
   had its coffee, the GTT pool (system RAM the GPU may borrow) is set to
   "all of it, minus a small reserve so Linux can still breathe". It works with
@@ -192,15 +199,43 @@ bookshelf. Give it a proper PSU and a fan that means business.
 memory, GPU state, storage link speed and server health on one screen, for when you want to know what it's doing without asking it
 and getting a 400-word answer.
 
+## What's new in 0.3
+
+The "stay current and stop being clever" release.
+
+- **Fresh upstream bits.** Kernel `linux-lts` 6.18.57 (with the 40 CU
+  `amdgpu` rebuilt to match), llama.cpp b11715, Mesa 26.2.5, and the latest
+  `smu`-branch governor, which now explains itself when it fails and shuts
+  down cleanly instead of sulking. Every llama-server flag Moraine uses was
+  checked against the new llama.cpp before anything was rebuilt.
+- **Admin page does it all now.** Model upload, profile editor, system
+  settings (CU mode, WGP masking, governor points, GTT pool, password,
+  benchmark, drive speed test), a live model-loading progress bar, and a
+  Hugging Face browser that downloads straight to `/models`.
+- **Kernel memory diet.** About 137 MiB of boot-time kernel reservations
+  handed back to the GPU pool (smaller DMA bounce buffer, no NVMe host
+  memory buffer, right-sized hash tables). `MEM_SAVE="no"` undoes it.
+- **A friendlier front door.** The console shows hostname, IP and URLs,
+  insults you for wrong passwords, and picks a fresh quip every boot.
+- **Safer defaults.** 24 CUs and a fixed 1500 MHz out of the box, no model
+  configured until you choose one, `/models` writable by everyone, and
+  memory reported in MiB everywhere.
+- **Shelved:** llama.cpp router mode (switching profiles in the web UI was
+  not reliable). The code is still in the tree for a later attempt.
+
+Upgrading from an earlier release: reflash. Package names, paths and the
+signing key have all changed since 0.1, so in-place `apk` upgrades won't
+take.
+
 ## What's inside
 
 | Component | Version / source |
 |---|---|
 | Base system | Alpine Linux 3.24 (musl, busybox, OpenRC, dropbear) |
-| Kernel | Alpine `linux-lts` 6.18 + `amdgpu` rebuilt with the [BC-250 40 CU unlock patch](https://github.com/duggasco/bc250-40cu-unlock) |
-| GPU driver | Mesa 26.2 (mainline), RADV only, built without LLVM |
-| Inference | llama.cpp (mainline), Vulkan backend, statically linked `llama-server` / `llama-bench` |
-| GPU governor | [cyan-skillfish-governor](https://github.com/filippor/cyan-skillfish-governor/tree/smu), `smu` branch |
+| Kernel | Alpine `linux-lts` 6.18.57 + `amdgpu` rebuilt with the [BC-250 40 CU unlock patch](https://github.com/duggasco/bc250-40cu-unlock) |
+| GPU driver | Mesa 26.2.5 (mainline), RADV only, built without LLVM |
+| Inference | llama.cpp b11715 (mainline), Vulkan backend, statically linked `llama-server` / `llama-bench` |
+| GPU governor | [cyan-skillfish-governor](https://github.com/filippor/cyan-skillfish-governor/tree/smu), `smu` branch (commit `7b08fdc`), fixed at the stock 1500 MHz |
 | Monitoring | [amdgpu_top](https://github.com/Umio-Yasuno/amdgpu_top) (from Alpine edge/testing) |
 | Firmware | `linux-firmware-amdgpu`, `linux-firmware-rtl_nic`, and absolutely nothing else |
 
