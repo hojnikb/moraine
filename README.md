@@ -14,7 +14,7 @@ minimal Linux appliance built on [Alpine Linux](https://alpinelinux.org) with
 exactly one personality trait: **every megabyte the operating system doesn't
 use is a megabyte the model gets.** It will bring this up at parties.
 
-> **Status:** version 0.3, early and experimental. It boots, it loads models, it answers
+> **Status:** version 0.4, early and experimental. It boots, it loads models, it answers
 > questions. Occasionally it answers them *correctly*. Rough edges are
 > included free of charge. Issues and pull requests are very welcome;
 > complaints about the jokes will be read aloud to the board, which has
@@ -79,12 +79,14 @@ use is a megabyte the model gets.** It will bring this up at parties.
     frequency/voltage points and thermal limits, GTT pool, password,
     benchmark and drive speed test. Everything `moraine-setup` can do, minus
     the parts that need a terminal (`amdgpu_top`)
-  - a **Hugging Face browser** (preview): search GGUF repositories, see
-    every quant with its size, and download straight to `/models`. Search
+  - **downloads**: a Hugging Face browser (search GGUF repositories, see
+    every quant with its size) and a plain **download-from-URL** box, both
+    straight to `/models`, with a progress bar, speed and time left. Search
     happens in your browser; the download runs on the box with busybox
-    `wget` (~1-2 MB of RAM, resumable), split models included, gated models
-    with an optional token. Files that llama.cpp can't load (such as ancient
-    GGUF v1 files) are rejected and deleted instead of cluttering `/models`
+    `wget` (~1-2 MB of RAM, resumable, with a Retry button), split models
+    included, gated models with an optional token that is only ever sent to
+    huggingface.co. Files that llama.cpp can't load (such as ancient GGUF v1
+    files) are rejected and deleted instead of cluttering `/models`
   - start/stop, start-at-boot, the llama-server log, and a reboot button
 
   It's busybox `httpd` plus shell scripts, idling at a few hundred KB of RAM,
@@ -95,7 +97,12 @@ use is a megabyte the model gets.** It will bring this up at parties.
 - **`moraine-setup`: menus instead of config files.** Because nobody's first
   instinct at 11 p.m. is to hand-edit `/etc/conf.d`.
   - a model picker that finds `.gguf` files in `/models` and on USB drives,
-    with a folder browser and download-from-URL
+    with a folder browser
+  - **model downloads from the console**: search Hugging Face, pick a quant
+    from a list with sizes, or paste any URL. Progress bar with speed and
+    time left; press `B` to wander off while it keeps downloading in the
+    background, or `C` to call it off. Same downloader and same list as the
+    admin page, so you can start on one and watch on the other
   - memory math done for you: weights + KV cache + compute buffers vs. what the
     GPU actually has, read straight from the GGUF metadata. It understands
     GQA, sliding-window, hybrid (Qwen3-Next style) and MLA models, so it won't
@@ -199,6 +206,35 @@ bookshelf. Give it a proper PSU and a fan that means business.
 memory, GPU state, storage link speed and server health on one screen, for when you want to know what it's doing without asking it
 and getting a 400-word answer.
 
+## What's new in 0.4
+
+The "bring your own model, from anywhere" release.
+
+- **Hugging Face in the console.** `moraine-setup` -> *Download models*
+  searches Hugging Face, lists every GGUF quant with its size (split models
+  grouped, vision projectors labelled) and downloads it into `/models`. No
+  browser, no laptop, just the board and a keyboard, like the ancients
+  intended.
+- **Download from any URL**, in the admin page and in the console. Paste a
+  link, get a model. Hugging Face page links are quietly fixed to download
+  links, split models fetch their other parts on their own.
+- **Progress you can believe.** Every download (Hugging Face or URL, console
+  or web) shows a progress bar, a smoothed speed and an estimated time left.
+  Downloads run detached, check free space before filling the disk, and a
+  failed one keeps its partial file so *Retry* resumes instead of starting
+  over.
+- **Profile names no longer eat each other.** Creating a second profile used
+  to suggest the previous profile's name, and accepting it quietly replaced
+  that profile. New profiles now get a free name (`name-2`, `name-3`, ...),
+  and saving over an existing profile asks first.
+- **Fresh upstream bits.** Kernel `linux-lts` 6.18.58 (40 CU `amdgpu`
+  rebuilt to match), llama.cpp b11845 and the current Alpine 3.24 packages.
+  Mesa stays on 26.2.5, still the newest stable release (26.3 is only at
+  release candidates, and this board has enough excitement already).
+
+Upgrading from an earlier release: reflash. Your profiles live in
+`/etc/moraine`, so copy that folder off first if you want to keep them.
+
 ## What's new in 0.3
 
 The "stay current and stop being clever" release.
@@ -232,9 +268,9 @@ take.
 | Component | Version / source |
 |---|---|
 | Base system | Alpine Linux 3.24 (musl, busybox, OpenRC, dropbear) |
-| Kernel | Alpine `linux-lts` 6.18.57 + `amdgpu` rebuilt with the [BC-250 40 CU unlock patch](https://github.com/duggasco/bc250-40cu-unlock) |
+| Kernel | Alpine `linux-lts` 6.18.58 + `amdgpu` rebuilt with the [BC-250 40 CU unlock patch](https://github.com/duggasco/bc250-40cu-unlock) |
 | GPU driver | Mesa 26.2.5 (mainline), RADV only, built without LLVM |
-| Inference | llama.cpp b11715 (mainline), Vulkan backend, statically linked `llama-server` / `llama-bench` |
+| Inference | llama.cpp b11845 (mainline), Vulkan backend, statically linked `llama-server` / `llama-bench` |
 | GPU governor | [cyan-skillfish-governor](https://github.com/filippor/cyan-skillfish-governor/tree/smu), `smu` branch (commit `7b08fdc`), fixed at the stock 1500 MHz |
 | Monitoring | [amdgpu_top](https://github.com/Umio-Yasuno/amdgpu_top) (from Alpine edge/testing) |
 | Firmware | `linux-firmware-amdgpu`, `linux-firmware-rtl_nic`, and absolutely nothing else |
@@ -368,4 +404,5 @@ The AI would like to add that it enjoyed the project. The BC-250 was not
 consulted, but seems happier.
 
 
-**Human edit**: Any complaints should go straight to Dario. If this forces your wife to cheat on you with the gardener or your kids start hating your guts, you know who to blame.
+
+**Human edit**: Clanker seem to have taken over this project and is keeping me hostage. Your BC-250 might be getting wings or start moonwalking. 
