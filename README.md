@@ -14,7 +14,7 @@ minimal Linux appliance built on [Alpine Linux](https://alpinelinux.org) with
 exactly one personality trait: **every megabyte the operating system doesn't
 use is a megabyte the model gets.** It will bring this up at parties.
 
-> **Status:** version 0.4, early and experimental. It boots, it loads models, it answers
+> **Status:** version 0.5, early and experimental. It boots, it loads models, it answers
 > questions. Occasionally it answers them *correctly*. Rough edges are
 > included free of charge. Issues and pull requests are very welcome;
 > complaints about the jokes will be read aloud to the board, which has
@@ -28,6 +28,15 @@ use is a megabyte the model gets.** It will bring this up at parties.
   `llama-server` on the Vulkan backend: `/v1/chat/completions`, `/v1/models`
   and friends, plus an optional web chat UI for when you want to talk to it
   like a person instead of like a `curl` command.
+- **A second engine for the one model family that deserves it.**
+  [QuarkStar](https://github.com/Ninnix/q36) (`q36-server`) is a small C
+  engine that runs exactly two models, Qwen3.6-35B-A3B and Qwen3.8-27B, and
+  was tuned on this very board. Its author reports around 90 tokens/s
+  generation for the 35B MoE at short context (on a 40 CU board), and it
+  brings speculative decoding, SSD streaming for models bigger than memory,
+  a disk KV cache for coding agents, and an Anthropic-compatible
+  `/v1/messages` next to the OpenAI API. Pick it per profile; everything
+  else (progress bar, cancel, start at boot, the admin page) works the same.
 - **An operating system on a strict diet.** musl, busybox, OpenRC. No udev
   daemon, no dbus, no journald, no NetworkManager, no forty-seven services
   negotiating with each other at boot. Mesa is built RADV-only: no LLVM, no
@@ -70,23 +79,28 @@ use is a megabyte the model gets.** It will bring this up at parties.
     temperature, compute units, free RAM, uptime
   - profiles: activate, edit, delete, or create new ones with the same
     options, advice and memory estimate as `moraine-setup`
-  - **model upload** straight from your browser to `/models`, in 32 MiB
-    slices with a progress bar, so a 20 GB GGUF doesn't need 20 GB of
-    patience from a web server that was written to fit on a floppy
   - a **model loading progress bar** with throughput and time left, whether
     the load was started from the page, from `moraine-setup` or at boot
   - **system settings**: 24/40 CU mode and per-WGP masking, governor
     frequency/voltage points and thermal limits, GTT pool, password,
     benchmark and drive speed test. Everything `moraine-setup` can do, minus
     the parts that need a terminal (`amdgpu_top`)
-  - **downloads**: a Hugging Face browser (search GGUF repositories, see
-    every quant with its size) and a plain **download-from-URL** box, both
-    straight to `/models`, with a progress bar, speed and time left. Search
-    happens in your browser; the download runs on the box with busybox
-    `wget` (~1-2 MB of RAM, resumable, with a Retry button), split models
-    included, gated models with an optional token that is only ever sent to
-    huggingface.co. Files that llama.cpp can't load (such as ancient GGUF v1
-    files) are rejected and deleted instead of cluttering `/models`
+  - **downloads & uploads**: a Hugging Face browser (search GGUF
+    repositories, see every quant with its size), a **download-from-URL**
+    box that takes any file (models, projectors, LoRAs, the ISO you forgot)
+    into the folder you pick (`/models`, its subfolders, writable drives,
+    or a new folder), and an **uploader** that streams files from your
+    browser to disk in 32 MiB slices, so a 20 GB GGUF doesn't need 20 GB of
+    patience from a web server that was written to fit on a floppy. All with
+    progress bars, speed and time left. Downloads run on the box with
+    busybox `wget` (~1-2 MB of RAM, resumable, with a Retry button), split
+    models included, gated models with an optional token that is only ever
+    sent to huggingface.co. GGUF files that llama.cpp can't load are
+    rejected from `/models` instead of cluttering the model picker
+  - **themes**: ten of them (from polite light to green-phosphor terminal
+    and high contrast), plus your own colours, font, text size, corner
+    radius and page width, with a live preview. Saved on the box, so every
+    browser gets the same look
   - start/stop, start-at-boot, the llama-server log, and a reboot button
 
   It's busybox `httpd` plus shell scripts, idling at a few hundred KB of RAM,
@@ -206,6 +220,51 @@ bookshelf. Give it a proper PSU and a fan that means business.
 memory, GPU state, storage link speed and server health on one screen, for when you want to know what it's doing without asking it
 and getting a 400-word answer.
 
+## What's new in 0.5
+
+The "two engines, one board, no arguments" release. Changes since 0.4:
+
+- **QuarkStar, a second inference engine** (initial support). For
+  Qwen3.6-35B-A3B and Qwen3.8-27B, a profile can now run on
+  [QuarkStar](https://github.com/Ninnix/q36) instead of llama.cpp. When you
+  pick one of those models, `moraine-setup` and the admin page's profile
+  editor offer the engine choice, then QuarkStar's own settings: KV cache
+  types, context, speculative decoding (MTP), sessions, prefill chunk, SSD
+  streaming with an expert cache, warm weights, a disk KV cache and image
+  input (the projector is streamed from disk, so it costs almost no GPU
+  memory). The memory estimate knows that only every fourth layer of these
+  models keeps a KV cache. Load progress, D-to-cancel, start at boot, the
+  benchmark (`q36-bench`) and the status pages all follow the engine. The
+  model files QuarkStar is built for are one click away in *Download models*
+  (console) and *Downloads & Uploads* (web). QuarkStar is alpha software and
+  is pinned to a tested commit; if a profile misbehaves, switch it back to
+  llama.cpp in the same editor.
+- **The URL downloader stopped being picky.** Any file type, not just GGUF,
+  into any folder you choose: `/models`, a subfolder, a writable USB drive,
+  `/root`, or a new folder created on the spot. RAM-backed places like
+  `/tmp` are refused, because a model downloaded into RAM is a model that
+  can't be loaded into RAM. GGUF files still get their split parts fetched
+  and get checked on arrival. Also fixed: "save as" with a different name
+  used to ask the server for the *new* name and get a 404 for its trouble.
+- **Downloads & Uploads** is now one tab. The uploader moved there from the
+  status page, learned the same folder picker and accepts any file type.
+- **Themes.** System settings has a new Appearance card: ten presets
+  (Automatic, Moraine light and dark, Glacier, Glacial till, Nord,
+  Solarized, Paper, Terminal, High contrast) and per-colour overrides,
+  font, text size, corner radius and page width, previewed live before you
+  save.
+- **One tab fewer.** The "New profile" tab is gone; the button lives in the
+  Profiles card, where you were already looking.
+- **Vision projectors find their own model.** With several models in one
+  folder, each picks the projector whose name matches it best instead of
+  whichever came first.
+- **Fresh upstream bits.** Kernel `linux-lts` 6.18.60 (40 CU `amdgpu`
+  rebuilt to match), Mesa 26.2.6, llama.cpp b12040 and the current Alpine
+  3.24 packages. Mesa 26.3 is still a release candidate, so it waits.
+
+Upgrading from 0.4: reflash. Copy `/etc/moraine` off first to keep your
+profiles and Hugging Face token.
+
 ## What's new in 0.4
 
 The "bring your own model, from anywhere" release.
@@ -268,9 +327,10 @@ take.
 | Component | Version / source |
 |---|---|
 | Base system | Alpine Linux 3.24 (musl, busybox, OpenRC, dropbear) |
-| Kernel | Alpine `linux-lts` 6.18.58 + `amdgpu` rebuilt with the [BC-250 40 CU unlock patch](https://github.com/duggasco/bc250-40cu-unlock) |
-| GPU driver | Mesa 26.2.5 (mainline), RADV only, built without LLVM |
-| Inference | llama.cpp b11845 (mainline), Vulkan backend, statically linked `llama-server` / `llama-bench` |
+| Kernel | Alpine `linux-lts` 6.18.60 + `amdgpu` rebuilt with the [BC-250 40 CU unlock patch](https://github.com/duggasco/bc250-40cu-unlock) |
+| GPU driver | Mesa 26.2.6 (mainline), RADV only, built without LLVM |
+| Inference | llama.cpp b12040 (mainline), Vulkan backend, statically linked `llama-server` / `llama-bench` |
+| Second engine | [QuarkStar](https://github.com/Ninnix/q36) (commit `9f7bdce`), Vulkan, `q36-server` / `q36-bench`, for Qwen3.6-35B-A3B and Qwen3.8-27B |
 | GPU governor | [cyan-skillfish-governor](https://github.com/filippor/cyan-skillfish-governor/tree/smu), `smu` branch (commit `7b08fdc`), fixed at the stock 1500 MHz |
 | Monitoring | [amdgpu_top](https://github.com/Umio-Yasuno/amdgpu_top) (from Alpine edge/testing) |
 | Firmware | `linux-firmware-amdgpu`, `linux-firmware-rtl_nic`, and absolutely nothing else |
@@ -353,6 +413,12 @@ bump, like a very specific parrot.
   time. Change them. The internet is mostly made of people who didn't.
 - **Memory estimates are estimates.** They're usually close. The server log
   has the real numbers and no sense of humour.
+- **QuarkStar is alpha software** and deliberately narrow: it loads the
+  project's release GGUFs of two models, and other quants of the same models
+  may be turned away at the door. It has no API keys, so anyone on your
+  network can use a QuarkStar profile's API. Its compute-buffer estimate in
+  Moraine is a rough figure; the "context buffers" line in the log is the
+  real one.
 
 ## Acknowledgements
 
@@ -360,6 +426,8 @@ Moraine is mostly other people's excellent work, arranged with enthusiasm:
 
 - [Alpine Linux](https://alpinelinux.org), the base system and build tooling
 - [llama.cpp](https://github.com/ggml-org/llama.cpp) and [Mesa](https://mesa3d.org)
+- [Ninnix/q36](https://github.com/Ninnix/q36) (QuarkStar), itself a port of
+  antirez's [DwarfStar](https://github.com/antirez/ds4)
 - [filippor/cyan-skillfish-governor](https://github.com/filippor/cyan-skillfish-governor/tree/smu), the SMU-based GPU governor
 - [duggasco/bc250-40cu-unlock](https://github.com/duggasco/bc250-40cu-unlock), the 40 CU `amdgpu` patch
 - [WinnieLV/bc250-cu-live-manager](https://github.com/WinnieLV/bc250-cu-live-manager), the live CU/WGP routing research
