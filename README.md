@@ -14,7 +14,7 @@ minimal Linux appliance built on [Alpine Linux](https://alpinelinux.org) with
 exactly one personality trait: **every megabyte the operating system doesn't
 use is a megabyte the model gets.** It will bring this up at parties.
 
-> **Status:** version 0.5, early and experimental. It boots, it loads models, it answers
+> **Status:** version 0.5.1, early and experimental. It boots, it loads models, it answers
 > questions. Occasionally it answers them *correctly*. Rough edges are
 > included free of charge. Issues and pull requests are very welcome;
 > complaints about the jokes will be read aloud to the board, which has
@@ -220,6 +220,41 @@ bookshelf. Give it a proper PSU and a fan that means business.
 memory, GPU state, storage link speed and server health on one screen, for when you want to know what it's doing without asking it
 and getting a 400-word answer.
 
+## What's new in 0.5.1
+
+The "which disk am I, again?" release.
+
+- **Two Moraine disks in one box no longer swap brains.** Until now the
+  boot image looked for its root by the label `moraine-root`, and *every*
+  Moraine disk has that label. With Moraine on the NVMe drive and on a USB
+  stick, booting from the stick typically mounted the NVMe root (NVMe shows
+  up first): the stick's kernel running the NVMe disk's system, settings
+  saved to the wrong disk, and a 40 CU toggle that rebuilt the boot image on
+  the *other* drive. First-boot growing could pick the wrong disk too.
+  - Root and boot partitions are now found by filesystem UUID, fresh for
+    every build, in the kernel command line and `/etc/fstab`. A 0.5.1 stick
+    next to an older install boots its own root.
+  - The same image written to two disks shares those UUIDs, so a new
+    early-boot service (`moraine-diskid`) checks for a twin. If it finds
+    one, it gives the disk it is running from new IDs (filesystem UUID,
+    boot partition ID, GPT GUIDs), rebuilds that disk's own boot image and
+    reboots once. Every step that can fail is done before anything is
+    changed, or undone if it fails. After that, each disk boots itself no
+    matter which one you pick in the boot menu.
+  - Growing the root on first boot now grows the root that is actually
+    mounted, not the first partition with the right name.
+  - Older installs still find their root by label: if you keep a 0.5 or
+    older install on the NVMe drive, reflash it with 0.5.1 too, or it can
+    still grab a stick's root when booted with the stick plugged in.
+- **Fresh upstream bits.** Kernel `linux-lts` 6.18.62 (40 CU `amdgpu`
+  rebuilt to match), llama.cpp b12257, QuarkStar at `c29767c` (fixes stalls
+  with MTP and tool calls, keeps the disk KV cache across restarts), the
+  governor's latest `smu` commit, and the current Alpine 3.24 packages.
+  Mesa 26.2.6 is still the newest stable release.
+
+Upgrading from 0.5: reflash. Copy `/etc/moraine` off first to keep your
+profiles and Hugging Face token.
+
 ## What's new in 0.5
 
 The "two engines, one board, no arguments" release. Changes since 0.4:
@@ -327,11 +362,11 @@ take.
 | Component | Version / source |
 |---|---|
 | Base system | Alpine Linux 3.24 (musl, busybox, OpenRC, dropbear) |
-| Kernel | Alpine `linux-lts` 6.18.60 + `amdgpu` rebuilt with the [BC-250 40 CU unlock patch](https://github.com/duggasco/bc250-40cu-unlock) |
+| Kernel | Alpine `linux-lts` 6.18.62 + `amdgpu` rebuilt with the [BC-250 40 CU unlock patch](https://github.com/duggasco/bc250-40cu-unlock) |
 | GPU driver | Mesa 26.2.6 (mainline), RADV only, built without LLVM |
-| Inference | llama.cpp b12040 (mainline), Vulkan backend, statically linked `llama-server` / `llama-bench` |
-| Second engine | [QuarkStar](https://github.com/Ninnix/q36) (commit `9f7bdce`), Vulkan, `q36-server` / `q36-bench`, for Qwen3.6-35B-A3B and Qwen3.8-27B |
-| GPU governor | [cyan-skillfish-governor](https://github.com/filippor/cyan-skillfish-governor/tree/smu), `smu` branch (commit `7b08fdc`), fixed at the stock 1500 MHz |
+| Inference | llama.cpp b12257 (mainline), Vulkan backend, statically linked `llama-server` / `llama-bench` |
+| Second engine | [QuarkStar](https://github.com/Ninnix/q36) (commit `c29767c`), Vulkan, `q36-server` / `q36-bench`, for Qwen3.6-35B-A3B and Qwen3.8-27B |
+| GPU governor | [cyan-skillfish-governor](https://github.com/filippor/cyan-skillfish-governor/tree/smu), `smu` branch (commit `34cea69`), fixed at the stock 1500 MHz |
 | Monitoring | [amdgpu_top](https://github.com/Umio-Yasuno/amdgpu_top) (from Alpine edge/testing) |
 | Firmware | `linux-firmware-amdgpu`, `linux-firmware-rtl_nic`, and absolutely nothing else |
 
@@ -470,7 +505,6 @@ What that means for you:
 
 The AI would like to add that it enjoyed the project. The BC-250 was not
 consulted, but seems happier.
-
 
 
 **Human edit**: Clanker seem to have taken over this project and is keeping me hostage. Your BC-250 might be getting wings or start moonwalking. 
